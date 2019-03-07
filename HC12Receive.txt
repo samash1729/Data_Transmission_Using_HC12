@@ -1,0 +1,132 @@
+#include<SoftwareSerial.h>
+
+/* Basically in this program we will demonstrate how we are receiving the data that we sent from the other 
+   The code is commented out wherever there is a need to explain*/
+
+
+SoftwareSerial hc12(2,3);    //RX and TX of Hc12
+int c,flag=0 ;
+char newarr[50];             //This is the String that will be created 
+                             //by adding each individual character 
+                             //from buffer
+
+int dflag,i,j;
+float val;
+void setup()
+{
+  Serial.begin(38400); //This turns on the Serial Monitor so 
+                       //that we can use it to display received data
+
+  hc12.begin(38400);   //This turns on Hc12 hence it starts 
+                       //to listen in for data
+}
+void loop()
+{
+  while(hc12.available()==0); //This statment is checking for the 
+                              //availability of data in hc12
+                              // It is stuck in a loop and if some 
+                              //data comes 
+                              //in the buffer only then the 
+                              //loop will be released
+
+    char str = hc12.read();   //Reading one character 
+                              //at a time from the buffer
+
+    /* The way data is sent from the transmitting side looks s
+    omething like this : *data#$length_of_this_string_% */
+
+    if(str=='*')      // So here we are looking for 
+                      //that first character i.e '*'
+    {
+      flag=1;         //Once we get this we set Flag to 1 signifying 
+                      //that we got the first character
+      c = 0;
+      for(int i=0;i<30;++i) //We initialize our array with spaces
+      newarr[c]=' ';
+      newarr[0] = '*';
+      dflag = 1;
+      goto a;
+    }
+    if(str=='%' && dflag==1) //Here we are checking if 
+                             //we have received that 
+                             //last character of the sent 
+                             //string and if all the characters 
+    {                        //are valid or not through dflag ; 
+                             //dflag becomes 0 if 
+                             //any of the character is 
+                             //invalid(Explained Below)
+
+      newarr[++c] = '%';
+      flag=0;
+      String checkstr(newarr);    //Converting array to String so 
+                                  //that we can use functions
+                                  // like indexOf to calculate exact 
+                                  //locations of start and stop bits
+
+
+      int checkval = checkstr.indexOf("#");
+      int val1 = checkstr.indexOf("$");     //Gives Location of start_BIT
+      int val2 = checkstr.indexOf("%");     //Gives Location of Stop_BIT
+      char newstr[20];
+      for(int e=0;e<20;++e)
+      newstr[e]=' ';
+      int c=0;
+      for(int k=val1+1;k<val2;++k,++c)
+      {
+        newstr[c] = checkstr[k];  //Extracting The Embedded 
+                                  //Length inside 
+                                  //the received String in
+                                  //the form of an array 
+      }                         
+      String somestr(newstr);    //Again converting Char 
+                                 //array to String so that 
+                                 //we can use some Functions
+
+      if(strlen(newarr)==somestr.toFloat()) //Now we are comparing 
+       {                                     //the length of the 
+                                            //received String with 
+                                            //the length that was 
+                                            //embedded in the String
+
+                                            //If they match then it 
+                                            //means that there has 
+                                            //been no drop in data 
+        char hstr[15];
+        for(int h=1,l=-1;h<checkval;++h)
+        hstr[++l] = newarr[h];              //Here we are extracting the 
+                                            //actualdata in the form of
+                                            //String 
+          double num = atof(hstr);          //Converting that data 
+                                            //in String to Double
+          Serial.println(num);
+      }
+      else                       //If not equal then it means 
+                                 //data has been modified
+      { 
+        Serial.println("Value Dropped");
+      }
+      hc12.flush(); //Flushing the buffer after each receive ,
+                    //we loose some data but we get new data
+    }
+     if(flag==1)      //Flag is set to 1 hence we should 
+                      //check the incoming values for errors
+    {
+      if(str>=0 && str<128) // Here we are checking if the incoming 
+                            //value is a valid character or not
+      {                     //If valid only then we 
+                            //are adding it to our array
+        newarr[++c] = str ;
+      }
+      else
+      {
+        Serial.println("Invalid");  //Else we are declaring it invalid
+                                    // and setting dflag to 0 
+        dflag = 0;                  //If dflag = 1 means all characters are valid 
+        for(i=0;i<30;++i)           //Reinitializing array with blank spaces as 
+                                    //one of the character was invalid 
+        newarr[i]=' ';
+      }
+    }
+    a :;
+  
+}

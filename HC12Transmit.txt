@@ -1,0 +1,70 @@
+/* This code demonstrates how the transmitter code looks like */
+
+#include<SoftwareSerial.h>  //Required for choosing Rx 
+                            //and Tx of Hc12
+
+SoftwareSerial hc12(2,3);   //RX and TX  of arduino
+char message[100];          //Main message that will contain 
+                            //the String to be sent
+float data;   
+void setup()
+{
+  Serial.begin(9600); //This turns on the Serial Monitor so that 
+                      //we can use it to display received data
+  hc12.begin(9600);   //This turns on Hc12 hence it starts to listen 
+                      //in for data
+}
+
+/* For simplicity i have submitted this general transmitter code  
+which does not contain any interaction with sensor values as this
+ is easy to understand */
+
+void loop()
+{
+    sprintf(message,"%s","");      //This initializes message with
+                                   // a blank
+                                   //We are sending 103 here 
+                                   //constantly but 
+                                   //instead of this we can send pressure 
+                                   //values which was done actually
+
+    put_data(message,103,"*","#"); //This calls the function that inserts 
+                                   //the data that is 103 inside
+                                   // two special
+                                   // characters a start bit '*' and a 
+                                   //stop bit '#'
+
+    addChecksum(message);          // This fucntion embbeds the length of 
+                                   //the string inside the string
+
+    String newmess(message);       //Converting char array to String
+                                   // so that 
+                                   //we can use some extra functions
+
+    hc12.println(newmess);         //Passing Data to hc12 which will 
+                                   //then broadcast it
+
+    Serial.println(newmess);
+}
+
+//The Following function puts data between the passed start_bit 
+//and stop_bit and saves all of the it to the passed String
+
+void put_data(char *string_edit,int data,char *start_del,char *end_del)
+{
+ char message[100];   
+ char str_data[15];   
+ /* 0 is mininum width, 4 is precision; float value is copied onto str_data*/
+ dtostrf(data,0,4,str_data);
+ sprintf(message,"%s%s%s",string_edit,start_del,str_data);
+ sprintf(string_edit,"%s%s",message,end_del);
+}
+//The Following function calculates the length of the string that is to 
+//be passed and embedds that length in the form of numbers inside the string
+
+void addChecksum(char *message) 
+{
+  int len=strlen(message);
+  len=len + String(len).length() + 8;
+  put_data(message,len,"$","%");
+}
